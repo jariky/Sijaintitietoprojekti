@@ -11,7 +11,7 @@ void setup()
 void loop()
 {
   digitalWrite(led, HIGH);   // turn the LED on (HIGH is the voltage level)
-  delay(199);               // wait for a second
+  delay(250);               // wait for a second
   digitalWrite(led, LOW);    // turn the LED off by making the voltage LOW
   delay(13);               // wait for a second
 }
