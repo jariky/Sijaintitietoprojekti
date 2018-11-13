@@ -5,8 +5,7 @@
 
 const uint8_t GPSAddress = 0x42;      // GPS I2C Address
 
-double value;
-double conv;
+double value, conv, lat, lon;
 
 
 double dataTransfer(int8_t *data_buf, int8_t num)   // Data type converter：convert int8_t type to float
@@ -105,7 +104,7 @@ void rec_data(int8_t *buff, int8_t num1, int8_t num2)   // Receive data function
 //  conv = floor(value/100) * (1 - 1/.6) + value/60;
 
 
-void latitude()     // Latitude information
+double latitude()     // Latitude information
 {
   int8_t lat[10] = { '0','0','0','0','0','0','0','0','0','0' };     // Store the latitude data
   rec_data(lat, 1 ,10);      // Receive the latitude data
@@ -117,10 +116,12 @@ void latitude()     // Latitude information
   Serial.print(value, 8);
   Serial.print("\tconverted = ");
   Serial.print(conv, 8);
+  
+  return converted;
 }
 
 
-void longitude()     // Longitude information
+double longitude()     // Longitude information
 {
   int8_t lon[11] = { '0','0','0','0','0','0','0','0','0','0','0' };   // Store longitude data
   rec_data(lon, 3, 11);     // Receive the longitude data
@@ -133,6 +134,8 @@ void longitude()     // Longitude information
   Serial.print(value, 8);
   Serial.print("\tconverted = ");
   Serial.println(conv, 8);
+
+  return converted;
 }
 
 
@@ -147,8 +150,8 @@ void loop()
 {
   while (1)
   {
-    latitude();
-    longitude();
+    lat = latitude();
+    lon = longitude();
     Serial.println();
   }
 }
