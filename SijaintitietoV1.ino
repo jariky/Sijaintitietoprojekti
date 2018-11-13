@@ -4,12 +4,14 @@
 #include <Wire.h>
 #include <Math.h>
 
-#DEFINE PI 3.14159265359 
+#define PI 3.14159265359 
 
 const uint8_t GPSAddress = 0x42;      // GPS I2C Address
 
-const double latDestRad = 1,134666018; // Kauppakeskus Valkea
-const double lonDestRad = 0,444584509; // Kauppakeskus Valkea
+//const double latDestRad = 1.134666018; // Kauppakeskus Valkea
+//const double lonDestRad = 0.444584509; // Kauppakeskus Valkea
+const double latDestRad = 1.13442141; // Teboil Kaukovainio
+const double lonDestRad = 0.445300251; // Teboil Kaukovainio
 
 double value, conv, lat, lon;
 
@@ -152,17 +154,30 @@ void setup()
 }
 
 
+double laskeEtaisyys(double latRad, double lonRad, double latDestRad, double lonDestRad)
+{
+ // return 6378.8*acos((sin(latRad)*sin(latDestRad))+cos(latRad)*cos(latDestRad)*cos(lonDestRad - lonRad));
+    const double two=2.0;
+    return 6378.8*(two*asin(sqrt(square(sin((latRad-latDestRad)/two))+cos(latRad)*cos(latDestRad)*square(sin((lonDestRad-lonRad)/two)))));
+}
+
 void loop()
 {
   while (1)
   {
     lat = latitude();
-    float latRad = lat * PI / 180;
+    double latRad = lat * PI / 180.0;
     lon = longitude();
-    float lonRad = lon * PI / 180;
-    float distance = 6378.8*acos((sin(latRad)*sin(latDestRad))+cos(latRad)*cos(latDestRad)*cos(lonDestRad - lonRad));
-    Serial.print("Distance to the destination is: %f", distance);
+    double lonRad = lon * PI / 180.0;
+    double distance = laskeEtaisyys(latRad,lonRad,latDestRad,lonDestRad);
+    //float distance = 6378.8*acos((sin(latRad)*sin(latDestRad))+cos(latRad)*cos(latDestRad)*cos(lonDestRad - lonRad));
+    Serial.print("Distance to the destination is: ");
+    Serial.print(distance,3);
+    Serial.print(" km");
     Serial.println();
+
+    //char buf[100];
+    //sprintf(buf, "distance = %f km.", distance);
+    //Serial.println(buf);
   }
 }
-
