@@ -117,7 +117,7 @@ double latitude()     // Latitude information
   Serial.print("\tconverted = ");
   Serial.print(conv, 8);
   
-  return converted;
+  return conv;
 }
 
 
@@ -135,7 +135,7 @@ double longitude()     // Longitude information
   Serial.print("\tconverted = ");
   Serial.println(conv, 8);
 
-  return converted;
+  return conv;
 }
 
 
