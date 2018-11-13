@@ -2,8 +2,14 @@
 
 #include "Arduino.h"
 #include <Wire.h>
+#include <Math.h>
+
+#DEFINE PI 3.14159265359 
 
 const uint8_t GPSAddress = 0x42;      // GPS I2C Address
+
+const double latDestRad = 1,134666018; // Kauppakeskus Valkea
+const double lonDestRad = 0,444584509; // Kauppakeskus Valkea
 
 double value, conv, lat, lon;
 
@@ -151,7 +157,11 @@ void loop()
   while (1)
   {
     lat = latitude();
+    float latRad = lat * PI / 180;
     lon = longitude();
+    float lonRad = lon * PI / 180;
+    float distance = 6378.8*acos((sin(latRad)*sin(latDestRad))+cos(latRad)*cos(latDestRad)*cos(lonDestRad - lonRad));
+    Serial.print("Distance to the destination is: %f", distance);
     Serial.println();
   }
 }
