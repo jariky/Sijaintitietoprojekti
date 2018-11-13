@@ -1,9 +1,50 @@
 
-
+#include <TFT.h>
+#include <SPI.h>
 #include "Arduino.h"
 #include <Wire.h>
+#include <Math.h>
+
+#define CS   10
+#define DC   9
+#define RESET  8 
+#define PI 3.14159265359 
+
+TFT myScreen = TFT(CS, DC, RESET);
+
+// variable to keep track of the elapsed time
+uint32_t counter = 0;
+// char array to print time
+//char printout[4];
+char latitude1[10];
+char longitude2[10];
+char naytolle[10];
+char buf[200];
+uint8_t destination;
+uint8_t input;
+
+const double destinationCoords[4][4] =
+{
+  { 64.999488 , 25.512225   ,   1.134455078 , 0.445272326 },    // Koulu
+  { 65.011574 , 25.472816   ,   1.134666018 , 0.444584509 }, // Valkea
+  { 12.124355 , 12.234465   ,   1.123545 , 1.12355 },
+  { 12.124355 , 12.234465   ,   1.123545 , 1.12355 }
+};
+
 
 const uint8_t GPSAddress = 0x42;      // GPS I2C Address
+const char destinationText[4][30] =
+{
+  {"Kotkantie"} ,  
+  {"Viehetie"} ,  
+  {"Tirolintie"} ,  
+  {"Santerinkuja"}  
+};
+
+//const double latDestRad = 1.134666018; // Kauppakeskus Valkea
+//const double lonDestRad = 0.444584509; // Kauppakeskus Valkea
+const double latDestRad = 1.13442141; // Teboil Kaukovainio
+const double lonDestRad = 0.445300251; // Teboil Kaukovainio
 
 double value, conv, lat, lon;
 
@@ -143,16 +184,90 @@ void setup()
 {
   Wire.begin();          // IIC Initialize
   Serial.begin(9600);
+
+    myScreen.begin();  
+  myScreen.background(0,0,0); // clear the screen
+  myScreen.stroke(255,255,255);
+  // static text
+  myScreen.text("Current location",0,0);
+  myScreen.text("Sijaintitieto-",75,25);
+  myScreen.text("projekti!!",75,35);
+  myScreen.text("Distance to destination",0,60); 
+//  myScreen.text(distance,0,80);
+   
+  // increase font size for text in loop() 
+  myScreen.setTextSize(1);
 }
 
+
+double laskeEtaisyys(double latRad, double lonRad, double latDestRad, double lonDestRad)
+{
+ // return 6378.8*acos((sin(latRad)*sin(latDestRad))+cos(latRad)*cos(latDestRad)*cos(lonDestRad - lonRad));
+    const double two=2.0;
+    return 6378.8*(two*asin(sqrt(square(sin((latRad-latDestRad)/two))+cos(latRad)*cos(latDestRad)*square(sin((lonDestRad-lonRad)/two)))));
+}
 
 void loop()
 {
+  
   while (1)
   {
+    if ( Serial.available() )
+    {
+     input = Serial.parseInt();
+     
+     if (input > -1  &&  input < 4)
+      destination = input; 
+    }
+    
     lat = latitude();
+    double latRad = lat * PI / 180.0;
     lon = longitude();
+    double lonRad = lon * PI / 180.0;
+    double distance = laskeEtaisyys(latRad,lonRad,destinationCoords[input][2],destinationCoords[input][3]);
+    //double distance = laskeEtaisyys(latRad,lonRad,latDestRad,lonDestRad);
+    //float distance = 6378.8*acos((sin(latRad)*sin(latDestRad))+cos(latRad)*cos(latDestRad)*cos(lonDestRad - lonRad));
+    Serial.print("Distance to the destination is: ");
+    Serial.print(distance,3);
+    Serial.print(" km");
     Serial.println();
+
+   // counter = millis();
+   // String elapsedTime = String(counter/1000);
+    String lati = String(lat,10);
+    String longi = String(lon,10);
+    String lukema = String(distance,3);
+    lati.toCharArray(latitude1,10);
+    longi.toCharArray(longitude2,10);
+    lukema.toCharArray(naytolle,10);
+    myScreen.stroke(0,255,0);
+    myScreen.text(latitude1,0,20);
+    myScreen.text(longitude2,0,40);
+    myScreen.text(naytolle,0,80);
+    myScreen.text("km",55,80);
+    delay(1000);
+    myScreen.stroke(0,0,0);
+    //myScreen.text(printout,0,20);
+    myScreen.text(latitude1,0,20);
+    myScreen.text(longitude2,0,40);
+    myScreen.text(naytolle,0,80);
+    myScreen.text("km",55,80);
+   
+     // get elapsed time
+    //counter = millis();
+    // convert to a string
+    //String elapsedTime = String(counter/1000);
+    // add to an array
+    //elapsedTime.toCharArray(printout,4);
+    // print out and erase
+    //myScreen.stroke(0,255,0);
+    //myScreen.text(printout,0,20);
+    //delay(1000);
+    //myScreen.stroke(0,0,0);
+    //myScreen.text(printout,0,20);
+    //char buf[100];
+    //sprintf(buf, "distance = %f km.", distance);
+    //Serial.println(buf);
+    
   }
 }
-
