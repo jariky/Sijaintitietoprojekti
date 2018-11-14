@@ -1,5 +1,4 @@
 
-
 #include <TFT.h>
 #include <SPI.h>
 #include "Arduino.h"
@@ -14,17 +13,17 @@
 TFT myScreen = TFT(CS, DC, RESET);
 
 char buf[90]; 
-uint8_t input, naytolle[10], longitude2[10], latitude1[10], dest;
+uint8_t input, naytolle[10], longitude2[10], latitude1[10], dest, speed1[10];
 uint32_t timestamp;
-double distance, value, conv, lat, lon, latRad, lonRad, oldLatRad, oldLonRad, diff;
+double velocity, distance, value, conv, lat, lon, latRad, lonRad, oldLatRad, oldLonRad, diff;
 
 const uint8_t GPSAddress = 0x42;      // GPS I2C Address
 const char destText[4][30] = { "Kotkantie" , "Viehetie" , "Tirolintie" , "Santerinkuja" };
 const double destCoords[4][4] =
 {
   { 64.999488 , 25.512225   ,   1.134455078 , 0.445272326 },    // Koulu
-  { 65.011574 , 25.472816   ,   1.134666018 , 0.444584509 },    // Valkea
-  { 12.124355 , 12.234465   ,   1.123545 , 1.12355 },
+  { 65.046135 , 25.483199   ,   1.135269221 , 0.444765726 },    // Viehetie
+  { 65.034385 , 25.462756   ,   1.135064145 , 0.444408929 },    // Tirolintie       
   { 12.124355 , 12.234465   ,   1.123545 , 1.12355 }
 };
 
@@ -162,11 +161,12 @@ void setup()
 
   // static text
   myScreen.text("Current location",0,0);
-  myScreen.text("Sijaintitieto-",75,25);
-  myScreen.text("projekti!!",75,35);
-  myScreen.text("Distance to destination",0,60); 
-   
-  myScreen.setTextSize(1);    // increase font size for text in loop()
+  myScreen.text("Distance to",0,30);
+  myScreen.text("Speed",0,60); 
+  myScreen.text("Temperature",0,90); 
+  myScreen.setTextSize(1);   
+
+    // increase font size for text in loop()
 }
 
 
@@ -221,31 +221,42 @@ void loop()
 
     distance = laskeEtaisyys(latRad,lonRad,destCoords[dest][2],destCoords[dest][3]);
     diff = laskeEtaisyys(latRad, lonRad, oldLatRad, oldLonRad);
-    // velocity = 1000 * diff / interval;
+    velocity = 1000 * diff / interval;
 
     printInfo();
 
     String lati = String(lat, 10);
     String longi = String(lon, 10);
     String lukema = String(distance, 3);
+    String nopeus = String(velocity, 2);
+    
     lati.toCharArray(latitude1, 10);
     longi.toCharArray(longitude2, 10);
     lukema.toCharArray(naytolle, 10);
-
+    nopeus.toCharArray(speed1, 10);
+    
+    
     myScreen.stroke(0,255,0);
-    myScreen.text(latitude1,0,20);
-    myScreen.text(longitude2,0,40);
-    myScreen.text(naytolle,0,80);
-    myScreen.text("km",55,80);
-    delay(1000);
+    myScreen.text(latitude1,0,15);
+    myScreen.text(longitude2,65,15);
+    myScreen.text(naytolle,0,45);
+    myScreen.text("km",35,45);
+    myScreen.text(destText[dest],74,30);
+    myScreen.text(speed1,0,75);
+    myScreen.text("m/s",40,75); 
+ 
+    
+   
+    delay(4900);
     myScreen.stroke(0,0,0);
-    myScreen.text(latitude1,0,20);
-    myScreen.text(longitude2,0,40);
-    myScreen.text(naytolle,0,80);
-    myScreen.text("km",55,80);
-
+    myScreen.text(latitude1,0,15);
+    myScreen.text(longitude2,65,15);
+    myScreen.text(naytolle,0,45);
+    myScreen.text("km",35,45);
+    myScreen.text(destText[dest],74,30);
+    myScreen.text(speed1,0,75);
+    myScreen.text("m/s",40,75);
     checkSerial();    
     while (millis() - timestamp < interval);
   }
 }
-
