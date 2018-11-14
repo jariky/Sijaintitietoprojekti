@@ -1,4 +1,5 @@
 
+
 #include <TFT.h>
 #include <SPI.h>
 #include "Arduino.h"
@@ -8,45 +9,26 @@
 #define CS   10
 #define DC   9
 #define RESET  8 
-#define PI 3.14159265359 
+#define interval 5000
 
 TFT myScreen = TFT(CS, DC, RESET);
 
-// variable to keep track of the elapsed time
-uint32_t counter = 0;
-// char array to print time
-//char printout[4];
-char latitude1[10];
-char longitude2[10];
-char naytolle[10];
-char buf[200];
-uint8_t destination;
-uint8_t input;
+char buf[90]; 
+uint8_t input, naytolle[10], longitude2[10], latitude1[10], dest;
+uint32_t timestamp;
+double distance, value, conv, lat, lon, latRad, lonRad, oldLatRad, oldLonRad, diff;
 
-const double destinationCoords[4][4] =
+const uint8_t GPSAddress = 0x42;      // GPS I2C Address
+const char destText[4][30] = { "Kotkantie" , "Viehetie" , "Tirolintie" , "Santerinkuja" };
+const double destCoords[4][4] =
 {
   { 64.999488 , 25.512225   ,   1.134455078 , 0.445272326 },    // Koulu
-  { 65.011574 , 25.472816   ,   1.134666018 , 0.444584509 }, // Valkea
+  { 65.011574 , 25.472816   ,   1.134666018 , 0.444584509 },    // Valkea
   { 12.124355 , 12.234465   ,   1.123545 , 1.12355 },
   { 12.124355 , 12.234465   ,   1.123545 , 1.12355 }
 };
 
 
-const uint8_t GPSAddress = 0x42;      // GPS I2C Address
-const char destinationText[4][30] =
-{
-  {"Kotkantie"} ,  
-  {"Viehetie"} ,  
-  {"Tirolintie"} ,  
-  {"Santerinkuja"}  
-};
-
-//const double latDestRad = 1.134666018; // Kauppakeskus Valkea
-//const double lonDestRad = 0.444584509; // Kauppakeskus Valkea
-const double latDestRad = 1.13442141; // Teboil Kaukovainio
-const double lonDestRad = 0.445300251; // Teboil Kaukovainio
-
-double value, conv, lat, lon;
 
 
 double dataTransfer(int8_t *data_buf, int8_t num)   // Data type converter：convert int8_t type to float
@@ -153,11 +135,6 @@ double latitude()     // Latitude information
   value = dataTransfer(lat, 5);
   conv = floor(value/100) * 4/-6.0 + value/60;
   
-  Serial.print("Latitude:\traw = ");
-  Serial.print(value, 8);
-  Serial.print("\tconverted = ");
-  Serial.print(conv, 8);
-  
   return conv;
 }
 
@@ -170,12 +147,6 @@ double longitude()     // Longitude information
   value = dataTransfer(lon, 5);
   conv = floor(value/100) * 4/-6.0 + value/60;
   
-  Serial.println();
-  Serial.print("Longitude:\traw = ");
-  Serial.print(value, 8);
-  Serial.print("\tconverted = ");
-  Serial.println(conv, 8);
-
   return conv;
 }
 
@@ -185,61 +156,82 @@ void setup()
   Wire.begin();          // IIC Initialize
   Serial.begin(9600);
 
-    myScreen.begin();  
+  myScreen.begin();  
   myScreen.background(0,0,0); // clear the screen
   myScreen.stroke(255,255,255);
+
   // static text
   myScreen.text("Current location",0,0);
   myScreen.text("Sijaintitieto-",75,25);
   myScreen.text("projekti!!",75,35);
   myScreen.text("Distance to destination",0,60); 
-//  myScreen.text(distance,0,80);
    
-  // increase font size for text in loop() 
-  myScreen.setTextSize(1);
+  myScreen.setTextSize(1);    // increase font size for text in loop()
 }
 
 
 double laskeEtaisyys(double latRad, double lonRad, double latDestRad, double lonDestRad)
 {
- // return 6378.8*acos((sin(latRad)*sin(latDestRad))+cos(latRad)*cos(latDestRad)*cos(lonDestRad - lonRad));
-    const double two=2.0;
-    return 6378.8*(two*asin(sqrt(square(sin((latRad-latDestRad)/two))+cos(latRad)*cos(latDestRad)*square(sin((lonDestRad-lonRad)/two)))));
+    return 6378.8 * ( 2.0 * asin(sqrt(square(sin((latRad-latDestRad)/2.0))+cos(latRad)*cos(latDestRad)*square(sin((lonDestRad-lonRad)/2.0)))) );
 }
 
-void loop()
+
+double rad(double X)
 {
-  
+  return X * 3.14159265359 / 180.0;
+}
+
+
+void checkSerial()
+{
+  if ( Serial.available() )
+  {
+    input = Serial.parseInt();
+    
+    if (input > -1  &&  input < 4)
+      dest = input; 
+  }
+}
+
+
+void printInfo()
+{
+  Serial.print("Current position: ");
+  Serial.print(lat, 5);
+  Serial.print(" , ");
+  Serial.println(lon, 5);
+
+  sprintf(buf, "Distance to %s: %d m, difference: %d cm.\n", destText[dest], uint16_t(1000 * distance), uint16_t(100000 * diff));
+  Serial.println(buf);
+}
+
+
+void loop()
+{  
   while (1)
   {
-    if ( Serial.available() )
-    {
-     input = Serial.parseInt();
-     
-     if (input > -1  &&  input < 4)
-      destination = input; 
-    }
-    
-    lat = latitude();
-    double latRad = lat * PI / 180.0;
-    lon = longitude();
-    double lonRad = lon * PI / 180.0;
-    double distance = laskeEtaisyys(latRad,lonRad,destinationCoords[input][2],destinationCoords[input][3]);
-    //double distance = laskeEtaisyys(latRad,lonRad,latDestRad,lonDestRad);
-    //float distance = 6378.8*acos((sin(latRad)*sin(latDestRad))+cos(latRad)*cos(latDestRad)*cos(lonDestRad - lonRad));
-    Serial.print("Distance to the destination is: ");
-    Serial.print(distance,3);
-    Serial.print(" km");
-    Serial.println();
+    timestamp = millis();
 
-   // counter = millis();
-   // String elapsedTime = String(counter/1000);
-    String lati = String(lat,10);
-    String longi = String(lon,10);
-    String lukema = String(distance,3);
-    lati.toCharArray(latitude1,10);
-    longi.toCharArray(longitude2,10);
-    lukema.toCharArray(naytolle,10);
+    lat = latitude();
+    lon = longitude();
+    oldLatRad = latRad;
+    oldLonRad = lonRad;
+    latRad = rad(lat);
+    lonRad = rad(lon);
+
+    distance = laskeEtaisyys(latRad,lonRad,destCoords[dest][2],destCoords[dest][3]);
+    diff = laskeEtaisyys(latRad, lonRad, oldLatRad, oldLonRad);
+    // velocity = 1000 * diff / interval;
+
+    printInfo();
+
+    String lati = String(lat, 10);
+    String longi = String(lon, 10);
+    String lukema = String(distance, 3);
+    lati.toCharArray(latitude1, 10);
+    longi.toCharArray(longitude2, 10);
+    lukema.toCharArray(naytolle, 10);
+
     myScreen.stroke(0,255,0);
     myScreen.text(latitude1,0,20);
     myScreen.text(longitude2,0,40);
@@ -247,27 +239,13 @@ void loop()
     myScreen.text("km",55,80);
     delay(1000);
     myScreen.stroke(0,0,0);
-    //myScreen.text(printout,0,20);
     myScreen.text(latitude1,0,20);
     myScreen.text(longitude2,0,40);
     myScreen.text(naytolle,0,80);
     myScreen.text("km",55,80);
-   
-     // get elapsed time
-    //counter = millis();
-    // convert to a string
-    //String elapsedTime = String(counter/1000);
-    // add to an array
-    //elapsedTime.toCharArray(printout,4);
-    // print out and erase
-    //myScreen.stroke(0,255,0);
-    //myScreen.text(printout,0,20);
-    //delay(1000);
-    //myScreen.stroke(0,0,0);
-    //myScreen.text(printout,0,20);
-    //char buf[100];
-    //sprintf(buf, "distance = %f km.", distance);
-    //Serial.println(buf);
-    
+
+    checkSerial();    
+    while (millis() - timestamp < interval);
   }
 }
+
