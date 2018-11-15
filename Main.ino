@@ -11,18 +11,22 @@
 #include "Arduino.h"
 #include <Wire.h>
 #include <Math.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
 
-#define CS   10
-#define DC   9
-#define RESET  8 
+#define CS 10
+#define DC 9
+#define RESET 8 
 #define interval 5000
 
 TFT myScreen = TFT(CS, DC, RESET);
+OneWire OW(2);                               // Setup a oneWire instance to communicate with any OneWire devices, connecting data wire into pin 2
+DallasTemperature sensors(&OW);              // Pass our oneWire reference to Dallas Temperature
 
 char buf[70];
-uint8_t dest, input, distTFT[10], lonTFT[10], latTFT[10], velTFT[10];
+uint8_t dest, input, distTFT[6], lonTFT[10], latTFT[10], velTFT[6], tempTFT[5];
 uint32_t timestamp;
-double vel, dist, diff, lat, lon, latRad, lonRad, oldLatRad, oldLonRad;
+double vel, temp, dist, diff, lat, lon, latRad, lonRad, oldLatRad, oldLonRad;
 
 const char destText[4][15] = { "Kotkantie" , "Viehetie" , "Tirolintie" , "Santerinkuja" };
 const uint8_t GPSAddress = 0x42;      // GPS I2C Address
@@ -156,6 +160,7 @@ void setup()
 {
   Wire.begin();          // IIC Initialize
   Serial.begin(9600);
+  sensors.begin();                                 // Start up the library
 
   myScreen.begin();  
   myScreen.background(0,0,0);   // Clear screen
@@ -200,20 +205,9 @@ void printInfo()
 
   String(lat, 10).toCharArray(latTFT, 10);
   String(lon, 10).toCharArray(lonTFT, 10);
-  String(dist, 3).toCharArray(distTFT, 10);
-  String(vel, 2).toCharArray(velTFT, 10);
-
-/*
-  String latStr = String(lat, 10);
-  String lonStr = String(lon, 10);
-  String distStr = String(dist, 3);
-  String velStr = String(vel, 2);
-  
-  latStr.toCharArray(latTFT, 10);
-  lonStr.toCharArray(lonTFT, 10);
-  distStr.toCharArray(distTFT, 10);
-  velStr.toCharArray(velTFT, 10);
-*/
+  String(dist, 4).toCharArray(distTFT, 6);
+  String(vel, 3).toCharArray(velTFT, 6);
+  String(temp, 5).toCharArray(tempTFT, 5);
 
   myScreen.stroke(0,255,0);
   myScreen.text(latTFT,0,15);
@@ -222,9 +216,11 @@ void printInfo()
   myScreen.text("km",35,45);
   myScreen.text(destText[dest],74,30);
   myScreen.text(velTFT,0,75);
-  myScreen.text("m/s",40,75); 
+  myScreen.text("m/s",40,75);
+  myScreen.text(tempTFT,0,105);
+  myScreen.text("C",40,105);
 
-  delay(4500);
+  delay(interval - 500);
 
   myScreen.stroke(0,0,0);
   myScreen.text(latTFT,0,15);
@@ -234,6 +230,8 @@ void printInfo()
   myScreen.text(destText[dest],74,30);
   myScreen.text(velTFT,0,75);
   myScreen.text("m/s",40,75);
+  myScreen.text(tempTFT,0,105);
+  myScreen.text("C",40,105); 
 }
 
 
@@ -260,11 +258,12 @@ void loop()
     diff = laskeEtaisyys(latRad, lonRad, oldLatRad, oldLonRad);
     vel = 1000 * diff / interval;
 
+    sensors.requestTemperatures();               // Issues a global temperature request to all devices on the bus
+    temp = sensors.getTempCByIndex(0);           // You can have more than one DS18B20 on the same bus, 0 refers to the first IC on the wire
+
     printInfo();
-
-
-
     checkSerial();
+
     while (millis() - timestamp < interval);
   }
 }
