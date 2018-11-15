@@ -23,14 +23,14 @@ TFT myScreen = TFT(CS, DC, RESET);
 OneWire OW(2);                               // Setup a oneWire instance to communicate with any OneWire devices, connecting data wire into pin 2
 DallasTemperature sensors(&OW);              // Pass our oneWire reference to Dallas Temperature
 
-char buf[70];
-uint8_t dest, input, distTFT[6], lonTFT[10], latTFT[10], velTFT[6], tempTFT[5];
+char temp, buf[70];
+uint8_t vel, dest, input, distTFT[6], lonTFT[10], latTFT[10], velTFT[6], tempTFT[5];
 uint32_t timestamp;
-double vel, temp, dist, diff, lat, lon, latRad, lonRad, oldLatRad, oldLonRad;
+float dist, diff, lat, lon, latRad, lonRad, oldLatRad, oldLonRad;
 
 const char destText[4][15] = { "Kotkantie" , "Viehetie" , "Tirolintie" , "Santerinkuja" };
 const uint8_t GPSAddress = 0x42;      // GPS I2C Address
-const double destCoords[4][4] =
+const float destCoords[4][4] =
 {
   { 64.999488 , 25.512225   ,   1.134455078 , 0.445272326 },    // Koulu
   { 65.046135 , 25.483199   ,   1.135269221 , 0.444765726 },    // Viehetie
@@ -41,9 +41,9 @@ const double destCoords[4][4] =
 
 
 
-double dataTransfer(int8_t *data_buf, int8_t num)   // Data type converter：convert int8_t type to float. *data_buf = int8_t data array, num = float length
+float dataTransfer(int8_t *data_buf, int8_t num)   // Data type converter：convert int8_t type to float. *data_buf = int8_t data array, num = float length
 {
-  double temp = 0;
+  float temp = 0;
   uint8_t i,j;
 
   i = data_buf[0] == '-'  ?  1  :  0;
@@ -134,13 +134,13 @@ void rec_data(int8_t *buff, int8_t num1, int8_t num2)   // Receive data function
 }
 
 
-double trueGPS(double x)
+float trueGPS(float x)
 {
   return (x - floor(x/100) * 40.0) / 60;
 }
 
 
-double latitude()     // Latitude information
+float latitude()     // Latitude information
 {
   int8_t lat[10] = { '0','0','0','0','0','0','0','0','0','0' };     // Store the latitude data
   rec_data(lat, 1, 10);      // Receive the latitude data
@@ -148,7 +148,7 @@ double latitude()     // Latitude information
 }
 
 
-double longitude()     // Longitude information
+float longitude()     // Longitude information
 {
   int8_t lon[11] = { '0','0','0','0','0','0','0','0','0','0','0' };   // Store longitude data
   rec_data(lon, 3, 11);     // Receive the longitude data
@@ -175,7 +175,7 @@ void setup()
 }
 
 
-double laskeEtaisyys(double latRad, double lonRad, double latDestRad, double lonDestRad)
+float laskeEtaisyys(float latRad, float lonRad, float latDestRad, float lonDestRad)
 {
     return 6378.8 * ( 2.0 * asin(sqrt(square(sin((latRad-latDestRad)/2.0))+cos(latRad)*cos(latDestRad)*square(sin((lonDestRad-lonRad)/2.0)))) );
 }
@@ -207,7 +207,7 @@ void printInfo()
   String(lon, 10).toCharArray(lonTFT, 10);
   String(dist, 4).toCharArray(distTFT, 6);
   String(vel, 3).toCharArray(velTFT, 6);
-  String(temp, 5).toCharArray(tempTFT, 5);
+  String(.25 * temp, 5).toCharArray(tempTFT, 5);
 
   myScreen.stroke(0,255,0);
   myScreen.text(latTFT,0,15);
@@ -216,7 +216,7 @@ void printInfo()
   myScreen.text("km",35,45);
   myScreen.text(destText[dest],74,30);
   myScreen.text(velTFT,0,75);
-  myScreen.text("m/s",40,75);
+  myScreen.text("km/h",40,75);
   myScreen.text(tempTFT,0,105);
   myScreen.text("C",40,105);
 
@@ -229,13 +229,13 @@ void printInfo()
   myScreen.text("km",35,45);
   myScreen.text(destText[dest],74,30);
   myScreen.text(velTFT,0,75);
-  myScreen.text("m/s",40,75);
+  myScreen.text("km/h",40,75);
   myScreen.text(tempTFT,0,105);
   myScreen.text("C",40,105); 
 }
 
 
-double rad(double X)
+float rad(float X)
 {
   return X * 3.14159265359 / 180.0;
 }
@@ -256,10 +256,10 @@ void loop()
 
     dist = laskeEtaisyys(latRad, lonRad, destCoords[dest][2], destCoords[dest][3]);
     diff = laskeEtaisyys(latRad, lonRad, oldLatRad, oldLonRad);
-    vel = 1000 * diff / interval;
+    vel = 3.6 * diff / interval;
 
     sensors.requestTemperatures();               // Issues a global temperature request to all devices on the bus
-    temp = sensors.getTempCByIndex(0);           // You can have more than one DS18B20 on the same bus, 0 refers to the first IC on the wire
+    temp = 4 * sensors.getTempCByIndex(0);           // Saving 4x the real temperature
 
     printInfo();
     checkSerial();
