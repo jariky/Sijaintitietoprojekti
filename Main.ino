@@ -25,7 +25,6 @@ DallasTemperature sensors(&OW);              // Pass our oneWire reference to Da
 
 char temp, buf[70];
 uint8_t vel, dist, dest, input, displayStr[10];
-uint32_t timestamp;
 float diff, lat, lon, oldLat, oldLon;
 
 const uint8_t GPSAddress = 0x42;      // GPS I2C Address
@@ -228,7 +227,7 @@ void printInfo()
   Serial.println(buf);
 
   drawVariables(0, 255, 0);
-  delay(interval - 500);
+  delay(500);
   drawVariables(0, 0, 0);
 }
 
@@ -243,8 +242,6 @@ void loop()
 {  
   while (1)
   {
-    timestamp = millis();
-
     oldLat = lat;
     oldLon = lon;
     lat = latitude();
@@ -260,7 +257,7 @@ void loop()
     printInfo();
     checkSerial();
 
-    while (millis() - timestamp < interval);
+    while ( millis() % interval > 5 );
   }
 }
 
