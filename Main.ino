@@ -17,25 +17,25 @@
 #define CS 10
 #define DC 9
 #define RESET 8 
-#define interval 5000
+#define interval 4000
 
-TFT myScreen = TFT(CS, DC, RESET);
+TFT Screen = TFT(CS, DC, RESET);
 OneWire OW(2);                               // Setup a oneWire instance to communicate with any OneWire devices, connecting data wire into pin 2
 DallasTemperature sensors(&OW);              // Pass our oneWire reference to Dallas Temperature
 
 char temp, buf[70];
-uint8_t vel, dest, input, distTFT[6], lonTFT[10], latTFT[10], velTFT[6], tempTFT[5];
+uint8_t vel, dist, dest, input, displayStr[10];
 uint32_t timestamp;
-float dist, diff, lat, lon, latRad, lonRad, oldLatRad, oldLonRad;
+float diff, lat, lon, oldLat, oldLon;
 
-const char destText[4][15] = { "Kotkantie" , "Viehetie" , "Tirolintie" , "Santerinkuja" };
 const uint8_t GPSAddress = 0x42;      // GPS I2C Address
-const float destCoords[4][4] =
+const char destText[4][15] = { "Kotkantie" , "Viehetie" , "Tirolintie" , "Santerinkuja" };
+const float destPos[4][4] =
 {
-  { 64.999488 , 25.512225   ,   1.134455078 , 0.445272326 },    // Koulu
-  { 65.046135 , 25.483199   ,   1.135269221 , 0.444765726 },    // Viehetie
-  { 65.034385 , 25.462756   ,   1.135064145 , 0.444408929 },    // Tirolintie       
-  { 64.893637 , 25.564052   ,   1.132600000 , 0.446177000 }     // Santerinkuja
+  { 64.999488 , 25.512225 },    // Kotkantie
+  { 65.046135 , 25.483199 },    // Viehetie
+  { 65.034385 , 25.462756 },    // Tirolintie       
+  { 64.893637 , 25.564052 }     // Santerinkuja
 };
 
 
@@ -43,22 +43,22 @@ const float destCoords[4][4] =
 
 float dataTransfer(int8_t *data_buf, int8_t num)   // Data type converter：convert int8_t type to float. *data_buf = int8_t data array, num = float length
 {
-  float temp = 0;
+  float T = 0;
   uint8_t i,j;
 
   i = data_buf[0] == '-'  ?  1  :  0;
   
-  while (data_buf[i] != '.')   // The date in the array is converted to an integer and accumulative
-    temp = temp * 10 + (data_buf[i++] - 0x30);
+  while (data_buf[i] != '.')    // The date in the array is converted to an integer and accumulative
+    T = T * 10 + (data_buf[i++] - 0x30);
   for (j=0 ; j<num ; j++)
-    temp = temp * 10 + (data_buf[++i] - 0x30);    
-  for (j=0 ; j<num ; j++)    // The date will converted integer transform into a floating point number
-    temp /= 10;
+    T = T * 10 + (data_buf[++i] - 0x30);    
+  for (j=0 ; j<num ; j++)       // The date will converted integer transform into a floating point number
+    T /= 10;
 
-  if (data_buf[0] == '-') // Negative case
-    temp *= -1;           // Converted to a negative number    
+  if (data_buf[0] == '-')       // Negative case
+    T *= -1;                    // Converted to a negative number    
 
-  return temp;
+  return T;
 }
 
 
@@ -81,7 +81,8 @@ int8_t ID()       // Receive the statement ID
 
   while (1)
   {
-    rec_init();       // Receive data initialization    
+    rec_init();                      // Receive data initialization
+
     while ( Wire.available() )
     { 
       buff[i] = Wire.read();         // Receive serial data  
@@ -90,21 +91,21 @@ int8_t ID()       // Receive the statement ID
       {
         if (++i == 7)
         {
-          Wire.endTransmission();   // End of receiving
-          return 1;                 // Receiving returns 1
+          Wire.endTransmission();    // End of receiving
+          return 1;                  // Receiving returns 1
         }
       }
       else
         i=0;
     }
 
-    Wire.endTransmission();         // End receiving
+    Wire.endTransmission();          // End receiving
   }
 }
 
 
-void rec_data(int8_t *buff, int8_t num1, int8_t num2)   // Receive data function
-{                        //*buff：Receive data array；num1：Number of commas ；num2：The   length of the array
+void rec_data(int8_t *buff, int8_t num1, int8_t num2)   // Receive data function. buff = Received data array, num1 = Number of commas, num2 = Length of the array
+{
   int8_t i=0, count=0;
 
   if ( ID() )
@@ -158,26 +159,26 @@ float longitude()     // Longitude information
 
 void setup()
 {
-  Wire.begin();          // IIC Initialize
+  Wire.begin();               // IIC Initialize
   Serial.begin(9600);
-  sensors.begin();                                 // Start up the library
+  sensors.begin();            // Start up the library
 
-  myScreen.begin();  
-  myScreen.background(0,0,0);   // Clear screen
-  myScreen.stroke(255,255,255);
+  Screen.begin();  
+  Screen.background(0,0,0);   // Clear screen
+  Screen.stroke(255,255,255);
 
   // static text
-  myScreen.text("Current location",0,0);
-  myScreen.text("Distance to",0,30);
-  myScreen.text("Speed",0,60); 
-  myScreen.text("Temperature",0,90); 
-  myScreen.setTextSize(1);    // Increase font size for text in loop()
+  Screen.text("Current location", 0, 0);
+  Screen.text("Distance to", 0, 30);
+  Screen.text("Speed", 0, 60); 
+  Screen.text("Temperature", 0, 90); 
+  Screen.setTextSize(1);    // Increase font size for text in loop()
 }
 
 
-float laskeEtaisyys(float latRad, float lonRad, float latDestRad, float lonDestRad)
+float laskeEtaisyys(float lat1, float lon1, float lat2, float lon2)
 {
-    return 6378.8 * ( 2.0 * asin(sqrt(square(sin((latRad-latDestRad)/2.0))+cos(latRad)*cos(latDestRad)*square(sin((lonDestRad-lonRad)/2.0)))) );
+  return 6378.8 * ( 2.0 * asin(sqrt(square(sin(.5*(lat1-lat2)))+cos(lat1)*cos(lat2)*square(sin(.5*(lon2-lon1))))) );
 }
 
 
@@ -193,6 +194,29 @@ void checkSerial()
 }
 
 
+void draw(double value, uint8_t precision, uint8_t X, uint8_t Y)
+{
+  String(value, precision).toCharArray(displayStr, precision);
+  Screen.text(displayStr, X, Y);
+}
+
+
+void drawVariables(uint8_t R, uint8_t G, uint8_t B)
+{
+  Screen.stroke(R,G,B);
+
+  draw(lat, 10, 0, 15);
+  draw(lon, 10, 65, 15);
+  draw(.1 * dist, 6, 0, 45);              // Saved distance is 10x the real value
+  Screen.text("km", 35, 45);
+  Screen.text(destText[dest], 74, 30);
+  draw(.5 * vel, 5, 0, 75);               // Saved velocity is 2x the real value
+  Screen.text("km/h", 40, 75);
+  draw(.25 * temp, 5, 0, 105);            // Saved temperature is 4x the real value
+  Screen.text("C", 40, 105);  
+}
+
+
 void printInfo()
 {
   Serial.print("Current position: ");
@@ -203,41 +227,15 @@ void printInfo()
   sprintf(buf, "Distance to %s: %d m, difference: %d cm.\n", destText[dest], uint16_t(1000 * dist), uint16_t(100000 * diff));
   Serial.println(buf);
 
-  String(lat, 10).toCharArray(latTFT, 10);
-  String(lon, 10).toCharArray(lonTFT, 10);
-  String(dist, 4).toCharArray(distTFT, 6);
-  String(vel, 3).toCharArray(velTFT, 6);
-  String(.25 * temp, 5).toCharArray(tempTFT, 5);
-
-  myScreen.stroke(0,255,0);
-  myScreen.text(latTFT,0,15);
-  myScreen.text(lonTFT,65,15);
-  myScreen.text(distTFT,0,45);
-  myScreen.text("km",35,45);
-  myScreen.text(destText[dest],74,30);
-  myScreen.text(velTFT,0,75);
-  myScreen.text("km/h",40,75);
-  myScreen.text(tempTFT,0,105);
-  myScreen.text("C",40,105);
-
+  drawVariables(0, 255, 0);
   delay(interval - 500);
-
-  myScreen.stroke(0,0,0);
-  myScreen.text(latTFT,0,15);
-  myScreen.text(lonTFT,65,15);
-  myScreen.text(distTFT,0,45);
-  myScreen.text("km",35,45);
-  myScreen.text(destText[dest],74,30);
-  myScreen.text(velTFT,0,75);
-  myScreen.text("km/h",40,75);
-  myScreen.text(tempTFT,0,105);
-  myScreen.text("C",40,105); 
+  drawVariables(0, 0, 0);
 }
 
 
 float rad(float X)
 {
-  return X * 3.14159265359 / 180.0;
+  return X * .017453292519;         // return X * pi / 180.0;
 }
 
 
@@ -247,16 +245,14 @@ void loop()
   {
     timestamp = millis();
 
+    oldLat = lat;
+    oldLon = lon;
     lat = latitude();
     lon = longitude();
-    oldLatRad = latRad;
-    oldLonRad = lonRad;
-    latRad = rad(lat);
-    lonRad = rad(lon);
 
-    dist = laskeEtaisyys(latRad, lonRad, destCoords[dest][2], destCoords[dest][3]);
-    diff = laskeEtaisyys(latRad, lonRad, oldLatRad, oldLonRad);
-    vel = 3.6 * diff / interval;
+    dist = 10 * laskeEtaisyys( rad(lat), rad(lon), rad(destPos[dest][0]), rad(destPos[dest][1]) ); // Save 10x the real distance
+    diff = laskeEtaisyys( rad(lat), rad(lon), rad(oldLat), rad(oldLon) );
+    vel = 7.2 * diff / interval;           // vel = 2 * 3.6  * diff / interval;         Save 2x the real velocity
 
     sensors.requestTemperatures();               // Issues a global temperature request to all devices on the bus
     temp = 4 * sensors.getTempCByIndex(0);           // Saving 4x the real temperature
