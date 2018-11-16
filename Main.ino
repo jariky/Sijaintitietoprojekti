@@ -1,10 +1,4 @@
 
-/*
-  Huom:
-    Optimoi muuttujien kokoja
-    Yritä saada muuttujia PROGMEMiin
-*/
-
 
 #include <TFT.h>
 #include <SPI.h>
@@ -14,15 +8,17 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 
-#define CS 10
+//#define ScreenPinPWM 6
+#define RST 8
 #define DC 9
-#define RESET 8 
+#define CS 10
 #define interval 4000
 
-TFT Screen = TFT(CS, DC, RESET);
+TFT Screen = TFT(CS, DC, RST);
 OneWire OW(2);                               // Setup a oneWire instance to communicate with any OneWire devices, connecting data wire into pin 2
 DallasTemperature sensors(&OW);              // Pass our oneWire reference to Dallas Temperature
 
+// Huom: Yritä saada muuttujia PROGMEMiin
 char buf[70];
 uint8_t dest, input, displayStr[10];
 float vel, dist, temp, diff, lat, lon, oldLat, oldLon;
@@ -103,7 +99,7 @@ int8_t ID()       // Receive the statement ID
 }
 
 
-void rec_data(int8_t *buff, int8_t num1, int8_t num2)   // Receive data function. buff = Received data array, num1 = Number of commas, num2 = Length of the array
+void receiveData(int8_t *buff, int8_t num1, int8_t num2)   // buff = Received data array, num1 = Number of commas, num2 = Length of the array
 {
   int8_t i=0, count=0;
 
@@ -140,27 +136,27 @@ float trueGPS(float x)
 }
 
 
-float latitude()     // Latitude information
+float latitude()
 {
   int8_t lat[10] = { '0','0','0','0','0','0','0','0','0','0' };     // Store the latitude data
-  rec_data(lat, 1, 10);      // Receive the latitude data
+  receiveData(lat, 1, 10);
   return trueGPS( dataTransfer(lat, 5) );
 }
 
 
-float longitude()     // Longitude information
+float longitude()
 {
   int8_t lon[11] = { '0','0','0','0','0','0','0','0','0','0','0' };   // Store longitude data
-  rec_data(lon, 3, 11);     // Receive the longitude data
+  receiveData(lon, 3, 11);
   return trueGPS( dataTransfer(lon, 5) );
 }
 
 
 void setup()
 {
-  Wire.begin();               // IIC Initialize
+  Wire.begin();
   Serial.begin(9600);
-  sensors.begin();            // Start up the library
+  sensors.begin();
 
   Screen.begin();
   Screen.fillScreen(0);
@@ -187,8 +183,10 @@ void checkSerial()
   {
     input = Serial.parseInt();
     
-    if (input > -1  &&  input < 4)
-      dest = input; 
+    if (input < 0  &&  input > -5)
+      dest = abs(input); 
+//    else
+//      analogWrite(ScreenPinPWM, input);
   }
 }
 
@@ -207,6 +205,7 @@ void updateScreen()
   draw(lon, 10, 65, 15);
   draw(dist, 6, 0, 45);
   Screen.text("km", 35, 45);
+  Screen.fillRect(74, 30, 65, 7, 0);
   Screen.text(destText[dest], 74, 30);
   draw(vel, 5, 0, 75);
   Screen.text("km/h", 40, 75);
@@ -217,11 +216,14 @@ void updateScreen()
 
 void printInfo()
 {
+/*
   Serial.print("Current position: ");
   Serial.print(lat, 5);
   Serial.print(" , ");
   Serial.println(lon, 5);
+*/
 
+  Serial.print("Current position: " + String(lat, 5) + " , " + String(lon, 5));
   sprintf(buf, "Distance to %s: %d m, difference: %d cm.\n", destText[dest], uint16_t(1000 * dist), uint16_t(100000 * diff));
   Serial.println(buf);
 
@@ -244,11 +246,11 @@ void loop()
     lat = latitude();
     lon = longitude();
 
-    dist = laskeEtaisyys( rad(lat), rad(lon), rad(destPos[dest][0]), rad(destPos[dest][1]) ); // Save 10x the real distance
+    dist = laskeEtaisyys( rad(lat), rad(lon), rad(destPos[dest][0]), rad(destPos[dest][1]) );
     diff = laskeEtaisyys( rad(lat), rad(lon), rad(oldLat), rad(oldLon) );
     vel = 3.6 * diff / interval;
 
-    sensors.requestTemperatures();               // Issues a global temperature request to all devices on the bus
+    sensors.requestTemperatures();
     temp = sensors.getTempCByIndex(0);
 
     printInfo();
