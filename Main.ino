@@ -23,9 +23,9 @@ TFT Screen = TFT(CS, DC, RESET);
 OneWire OW(2);                               // Setup a oneWire instance to communicate with any OneWire devices, connecting data wire into pin 2
 DallasTemperature sensors(&OW);              // Pass our oneWire reference to Dallas Temperature
 
-char temp, buf[70];
-uint8_t vel, dist, dest, input, displayStr[10];
-float diff, lat, lon, oldLat, oldLon;
+char buf[70];
+uint8_t dest, input, displayStr[10];
+float vel, dist, temp, diff, lat, lon, oldLat, oldLon;
 
 const uint8_t GPSAddress = 0x42;      // GPS I2C Address
 const char destText[4][15] = { "Kotkantie" , "Viehetie" , "Tirolintie" , "Santerinkuja" };
@@ -162,16 +162,16 @@ void setup()
   Serial.begin(9600);
   sensors.begin();            // Start up the library
 
-  Screen.begin();  
-  Screen.background(0,0,0);   // Clear screen
+  Screen.begin();
+  Screen.fillScreen(0);
   Screen.stroke(255,255,255);
-
-  // static text
+  
   Screen.text("Current location", 0, 0);
   Screen.text("Distance to", 0, 30);
-  Screen.text("Speed", 0, 60); 
-  Screen.text("Temperature", 0, 90); 
-  Screen.setTextSize(1);    // Increase font size for text in loop()
+  Screen.text("Speed", 0, 60);
+  Screen.text("Temperature", 0, 90);
+
+  Screen.stroke(0,255,0);  
 }
 
 
@@ -195,24 +195,23 @@ void checkSerial()
 
 void draw(double value, uint8_t precision, uint8_t X, uint8_t Y)
 {
+  Screen.fillRect(X, Y, 5*(precision+1), 7, 0);
   String(value, precision).toCharArray(displayStr, precision);
   Screen.text(displayStr, X, Y);
 }
 
 
-void drawVariables(uint8_t R, uint8_t G, uint8_t B)
+void updateScreen()
 {
-  Screen.stroke(R,G,B);
-
   draw(lat, 10, 0, 15);
   draw(lon, 10, 65, 15);
-  draw(.1 * dist, 6, 0, 45);              // Saved distance is 10x the real value
+  draw(dist, 6, 0, 45);
   Screen.text("km", 35, 45);
   Screen.text(destText[dest], 74, 30);
-  draw(.5 * vel, 5, 0, 75);               // Saved velocity is 2x the real value
+  draw(vel, 5, 0, 75);
   Screen.text("km/h", 40, 75);
-  draw(.25 * temp, 5, 0, 105);            // Saved temperature is 4x the real value
-  Screen.text("C", 40, 105);  
+  draw(temp, 5, 0, 105);
+  Screen.text("C", 40, 105);
 }
 
 
@@ -226,9 +225,7 @@ void printInfo()
   sprintf(buf, "Distance to %s: %d m, difference: %d cm.\n", destText[dest], uint16_t(1000 * dist), uint16_t(100000 * diff));
   Serial.println(buf);
 
-  drawVariables(0, 255, 0);
-  delay(500);
-  drawVariables(0, 0, 0);
+  updateScreen();
 }
 
 
@@ -247,12 +244,12 @@ void loop()
     lat = latitude();
     lon = longitude();
 
-    dist = 10 * laskeEtaisyys( rad(lat), rad(lon), rad(destPos[dest][0]), rad(destPos[dest][1]) ); // Save 10x the real distance
+    dist = laskeEtaisyys( rad(lat), rad(lon), rad(destPos[dest][0]), rad(destPos[dest][1]) ); // Save 10x the real distance
     diff = laskeEtaisyys( rad(lat), rad(lon), rad(oldLat), rad(oldLon) );
-    vel = 7.2 * diff / interval;           // vel = 2 * 3.6  * diff / interval;         Save 2x the real velocity
+    vel = 3.6 * diff / interval;
 
     sensors.requestTemperatures();               // Issues a global temperature request to all devices on the bus
-    temp = 4 * sensors.getTempCByIndex(0);           // Saving 4x the real temperature
+    temp = sensors.getTempCByIndex(0);
 
     printInfo();
     checkSerial();
