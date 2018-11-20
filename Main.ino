@@ -7,6 +7,7 @@
 #include <Math.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
+#include "GsmFunctions.h"
 
 //#define ScreenPinPWM 6
 #define RST 8
@@ -23,111 +24,17 @@ char buf[70];
 uint8_t dest, input, displayStr[10];
 float vel, dist, temp, diff, lat, lon, oldLat, oldLon;
 
-const uint8_t GPSAddress = 0x42;      // GPS I2C Address
 const char destText[4][15] = { "Kotkantie" , "Viehetie" , "Tirolintie" , "Santerinkuja" };
-const float destPos[4][4] =
+const float destPos[4][2] =
 {
-  { 64.999488 , 25.512225 },    // Kotkantie
-  { 65.046135 , 25.483199 },    // Viehetie
-  { 65.034385 , 25.462756 },    // Tirolintie       
-  { 64.893637 , 25.564052 }     // Santerinkuja
+  64.999488 , 25.512225  ,    // Kotkantie
+  65.046135 , 25.483199  ,    // Viehetie
+  65.034385 , 25.462756  ,    // Tirolintie       
+  64.893637 , 25.564052       // Santerinkuja
 };
 
 
 
-
-float dataTransfer(int8_t *data_buf, int8_t num)   // Data type converter：convert int8_t type to float. *data_buf = int8_t data array, num = float length
-{
-  float T = 0;
-  uint8_t i,j;
-
-  i = data_buf[0] == '-'  ?  1  :  0;
-  
-  while (data_buf[i] != '.')    // The date in the array is converted to an integer and accumulative
-    T = T * 10 + (data_buf[i++] - 0x30);
-  for (j=0 ; j<num ; j++)
-    T = T * 10 + (data_buf[++i] - 0x30);    
-  for (j=0 ; j<num ; j++)       // The date will converted integer transform into a floating point number
-    T /= 10;
-
-  if (data_buf[0] == '-')       // Negative case
-    T *= -1;                    // Converted to a negative number    
-
-  return T;
-}
-
-
-void rec_init()   // Initial GPS
-{
-  Wire.beginTransmission(GPSAddress);
-  Wire.write(0xff);   // To send data address      
-  Wire.endTransmission(); 
-
-  Wire.beginTransmission(GPSAddress);
-  Wire.requestFrom(GPSAddress, 10);    // Require 10 bytes read from the GPS device
-}
-
-
-int8_t ID()       // Receive the statement ID
-{
-  int8_t i = 0;
-  int8_t valueI[7] = { '$','G','P','G','G','A',',' };        // To receive the ID content of GPS statements
-  int8_t buff[7] = { '0','0','0','0','0','0','0' };
-
-  while (1)
-  {
-    rec_init();                      // Receive data initialization
-
-    while ( Wire.available() )
-    { 
-      buff[i] = Wire.read();         // Receive serial data  
-
-      if (buff[i] == valueI[i])      // Contrast the correct ID
-      {
-        if (++i == 7)
-        {
-          Wire.endTransmission();    // End of receiving
-          return 1;                  // Receiving returns 1
-        }
-      }
-      else
-        i=0;
-    }
-
-    Wire.endTransmission();          // End receiving
-  }
-}
-
-
-void receiveData(int8_t *buff, int8_t num1, int8_t num2)   // buff = Received data array, num1 = Number of commas, num2 = Length of the array
-{
-  int8_t i=0, count=0;
-
-  if ( ID() )
-    while (1)
-    {
-      rec_init();
-
-      while ( Wire.available() )   
-      { 
-        buff[i] = Wire.read();
-
-        if (count != num1)
-        {  
-          if (buff[i] == ',')
-            count++;
-        }
-
-        else if (++i == num2)
-          {
-            Wire.endTransmission();
-            return;
-          }
-      }
-
-      Wire.endTransmission();
-    }
-}
 
 
 float trueGPS(float x)
@@ -182,16 +89,14 @@ void checkSerial()
   if ( Serial.available() )
   {
     input = Serial.parseInt();
-    
-    if (input < 4)
-      dest = input; 
+    dest = constrain(input, 0, 3);
 //    else
 //      analogWrite(ScreenPinPWM, input);
   }
 }
 
 
-void draw(double value, uint8_t precision, uint8_t X, uint8_t Y)
+void draw(float value, uint8_t precision, uint8_t X, uint8_t Y)
 {
   Screen.fillRect(X, Y, 5*(precision+1), 7, 0);
   String(value, precision).toCharArray(displayStr, precision);
@@ -216,13 +121,6 @@ void updateScreen()
 
 void printInfo()
 {
-/*
-  Serial.print("Current position: ");
-  Serial.print(lat, 5);
-  Serial.print(" , ");
-  Serial.println(lon, 5);
-*/
-
   Serial.print("Current position: " + String(lat, 5) + " , " + String(lon, 5));
   sprintf(buf, "Distance to %s: %d m, difference: %d cm.\n", destText[dest], uint16_t(1000 * dist), uint16_t(100000 * diff));
   Serial.println(buf);
@@ -259,3 +157,4 @@ void loop()
     while ( millis() % interval > 5 );
   }
 }
+
