@@ -183,8 +183,8 @@ void checkSerial()
   {
     input = Serial.parseInt();
     
-    if (input < 0  &&  input > -5)
-      dest = abs(input); 
+    if (input < 4)
+      dest = input; 
 //    else
 //      analogWrite(ScreenPinPWM, input);
   }
@@ -259,4 +259,3 @@ void loop()
     while ( millis() % interval > 5 );
   }
 }
-
