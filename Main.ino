@@ -9,7 +9,15 @@
 #include <DallasTemperature.h>
 #include "GsmFunctions.h"
 
-//#define ScreenPinPWM 6
+
+template<class T> inline Print &operator <<(Print &obj, T arg)
+{
+  obj.print(arg);
+  return obj;
+} 
+
+
+#define PF(x) pgm_read_float(x)
 #define RST 8
 #define DC 9
 #define CS 10
@@ -19,13 +27,11 @@ TFT Screen = TFT(CS, DC, RST);
 OneWire OW(2);                               // Setup a oneWire instance to communicate with any OneWire devices, connecting data wire into pin 2
 DallasTemperature sensors(&OW);              // Pass our oneWire reference to Dallas Temperature
 
-// Huom: Yritä saada muuttujia PROGMEMiin
-char buf[70];
-uint8_t dest, input, displayStr[10];
-float vel, dist, temp, diff, lat, lon, oldLat, oldLon;
+uint8_t dest;
+float lon, lat;
 
 const char destText[4][15] = { "Kotkantie" , "Viehetie" , "Tirolintie" , "Santerinkuja" };
-const float destPos[4][2] =
+const PROGMEM float destPos[4][2] =
 {
   64.999488 , 25.512225  ,    // Kotkantie
   65.046135 , 25.483199  ,    // Viehetie
@@ -88,23 +94,22 @@ void checkSerial()
 {
   if ( Serial.available() )
   {
-    input = Serial.parseInt();
+    uint8_t input = Serial.parseInt();
     dest = constrain(input, 0, 3);
-//    else
-//      analogWrite(ScreenPinPWM, input);
   }
 }
 
 
 void draw(float value, uint8_t precision, uint8_t X, uint8_t Y)
 {
+  uint8_t displayStr[10];
   Screen.fillRect(X, Y, 5*(precision+1), 7, 0);
   String(value, precision).toCharArray(displayStr, precision);
   Screen.text(displayStr, X, Y);
 }
 
 
-void updateScreen()
+void updateScreen(float dist, float vel, float temp)
 {
   draw(lat, 10, 0, 15);
   draw(lon, 10, 65, 15);
@@ -119,16 +124,6 @@ void updateScreen()
 }
 
 
-void printInfo()
-{
-  Serial.print("Current position: " + String(lat, 5) + " , " + String(lon, 5));
-  sprintf(buf, "Distance to %s: %d m, difference: %d cm.\n", destText[dest], uint16_t(1000 * dist), uint16_t(100000 * diff));
-  Serial.println(buf);
-
-  updateScreen();
-}
-
-
 float rad(float X)
 {
   return X * .017453292519;         // return X * pi / 180.0;
@@ -139,19 +134,19 @@ void loop()
 {  
   while (1)
   {
-    oldLat = lat;
-    oldLon = lon;
-    lat = latitude();
+    static float oldLon = lon;
+    static float oldLat = lat;
     lon = longitude();
+    lat = latitude();
 
-    dist = laskeEtaisyys( rad(lat), rad(lon), rad(destPos[dest][0]), rad(destPos[dest][1]) );
-    diff = laskeEtaisyys( rad(lat), rad(lon), rad(oldLat), rad(oldLon) );
-    vel = 3.6 * diff / interval;
+    float dist = laskeEtaisyys( rad(lat), rad(lon), rad(PF(&destPos[dest][0])), rad(PF(&destPos[dest][1])) );
+    float vel = 3.6 * laskeEtaisyys( rad(lat), rad(lon), rad(oldLat), rad(oldLon) ) / interval;
 
     sensors.requestTemperatures();
-    temp = sensors.getTempCByIndex(0);
+    float temp = sensors.getTempCByIndex(0);
 
-    printInfo();
+    Serial  <<  "Current position: "  <<  String(lat, 5)  <<  " , "  <<  String(lon, 5)  <<  "\nDistance to "  <<  destText[dest]  <<  ": "  <<  dist  <<  " km.\n";
+    updateScreen(dist, vel, temp);
     checkSerial();
 
     while ( millis() % interval > 5 );
