@@ -27,7 +27,6 @@ TFT Screen = TFT(CS, DC, RST);
 OneWire OW(2);                               // Setup a oneWire instance to communicate with any OneWire devices, connecting data wire into pin 2
 DallasTemperature sensors(&OW);              // Pass our oneWire reference to Dallas Temperature
 
-// Huom: Yritä saada muuttujia PROGMEMiin
 uint8_t dest;
 float lon, lat;
 
