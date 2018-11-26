@@ -21,7 +21,7 @@ template<class T> inline Print &operator <<(Print &obj, T arg)
 #define RST 8
 #define DC 9
 #define CS 10
-#define interval 5000
+#define interval 4000
 #define recSize 25
 
 
@@ -35,13 +35,8 @@ float lon, lat;
 
 
 const char destText[4][15] = { "Kotkantie" , "Viehetie" , "Tirolintie" , "Santerinkuja" };
-const PROGMEM float destPos[4][2] =
-{
-  64.999488 , 25.512225  ,    // Kotkantie
-  65.046135 , 25.483199  ,    // Viehetie
-  65.034385 , 25.462756  ,    // Tirolintie       
-  64.893637 , 25.564052       // Santerinkuja
-};
+const PROGMEM float destLat[4] = { 64.999488 , 65.046135 , 65.034385 , 64.893637 };
+const PROGMEM float destLon[4] = { 25.512225 , 25.483199 , 25.462756 , 25.564052 };
 
 
 
@@ -72,7 +67,7 @@ float longitude()
 void setup()
 {
   Wire.begin();
-  Serial.begin(9600);
+  Serial.begin(38400);
   sensors.begin();
 
   Screen.begin();
@@ -88,9 +83,9 @@ void setup()
 }
 
 
-float getDist(float lat1, float lon1, float lat2, float lon2)
+float getDist(float lon1, float lat1, float lon2, float lat2)
 {
-  return 6378.8 * ( 2.0 * asin(sqrt(square(sin(.5*(lat1-lat2)))+cos(lat1)*cos(lat2)*square(sin(.5*(lon2-lon1))))) );
+  return 12757.6 * asin(  sqrt( square(sin(.5*(lat1-lat2))) + cos(lat1)*cos(lat2)*square(sin(.5*(lon2-lon1))) )  );      // 12757.6 = 6378.8 * 2.0
 }
 
 
@@ -145,8 +140,8 @@ void loop()
     lon = longitude();
     lat = latitude();
 
-    float dist = getDist( rad(lat), rad(lon), rad(PF(&destPos[dest][0])), rad(PF(&destPos[dest][1])) );
-    float vel = 3.6 * getDist( rad(lat), rad(lon), rad(oldLat), rad(oldLon) ) / interval;
+    float dist = getDist( rad(lon), rad(lat), rad(PF(&destLon[dest])), rad(PF(&destLat[dest])) );
+    float vel = 3.6 * getDist( rad(lon), rad(lat), rad(oldLon), rad(oldLat) ) / interval;
 
     sensors.requestTemperatures();
     float temp = sensors.getTempCByIndex(0);
