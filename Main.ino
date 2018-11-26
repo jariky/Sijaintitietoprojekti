@@ -21,14 +21,18 @@ template<class T> inline Print &operator <<(Print &obj, T arg)
 #define RST 8
 #define DC 9
 #define CS 10
-#define interval 4000
+#define interval 5000
+#define recSize 25
+
 
 TFT Screen = TFT(CS, DC, RST);
 OneWire OW(2);                               // Setup a oneWire instance to communicate with any OneWire devices, connecting data wire into pin 2
 DallasTemperature sensors(&OW);              // Pass our oneWire reference to Dallas Temperature
 
-uint8_t dest;
+uint8_t dest, recTemp[recSize];
+uint16_t counter, recLon[recSize], recLat[recSize];
 float lon, lat;
+
 
 const char destText[4][15] = { "Kotkantie" , "Viehetie" , "Tirolintie" , "Santerinkuja" };
 const PROGMEM float destPos[4][2] =
@@ -134,6 +138,8 @@ void loop()
 {  
   while (1)
   {
+    uint32_t timestamp = millis();
+
     static float oldLon = lon;
     static float oldLat = lat;
     lon = longitude();
@@ -145,11 +151,26 @@ void loop()
     sensors.requestTemperatures();
     float temp = sensors.getTempCByIndex(0);
 
-    Serial  <<  "Current position: "  <<  String(lat, 5)  <<  " , "  <<  String(lon, 5)  <<  "\nDistance to "  <<  destText[dest]  <<  ": "  <<  dist  <<  " km.\n";
+    Serial  <<  "\nCurrent position: "  <<  String(lat, 5)  <<  " , "  <<  String(lon, 5)  <<  "\tDistance to "  <<  destText[dest]  <<  ": "  <<  dist  <<  " km\tTemperature: "  <<  temp  <<  " C.";
     updateScreen(dist, vel, temp);
     checkSerial();
 
-    while ( millis() % interval > 5 );
+    recLon [counter] = constrain( 354130.304389406 * (lon - 25.385982), 0, 65535 );
+    recLat [counter] = constrain( 338224.213210034 * (lat - 64.889301), 0, 65535 );
+    recTemp[counter] = constrain( 4 * (temp + 31.75), 0, 255 );
+
+    if (++counter == recSize)
+    {
+      Serial  <<  "\n";
+      
+      for (uint16_t i=0 ; i<counter ; i++)
+        Serial  <<  "\n#"  <<  i  <<  "\tLon = "  <<  recLon[i]  <<  "\tLat = "  <<  recLat[i]  <<  "\tTemp = "  <<  recTemp[i]  <<  ".";
+
+      Serial  <<  "\n";
+      counter = 0;
+    }
+
+    while ( millis() - timestamp < interval );
   }
 }
 
