@@ -88,7 +88,7 @@ void setup()
 }
 
 
-float laskeEtaisyys(float lat1, float lon1, float lat2, float lon2)
+float getDist(float lat1, float lon1, float lat2, float lon2)
 {
   return 6378.8 * ( 2.0 * asin(sqrt(square(sin(.5*(lat1-lat2)))+cos(lat1)*cos(lat2)*square(sin(.5*(lon2-lon1))))) );
 }
@@ -145,8 +145,8 @@ void loop()
     lon = longitude();
     lat = latitude();
 
-    float dist = laskeEtaisyys( rad(lat), rad(lon), rad(PF(&destPos[dest][0])), rad(PF(&destPos[dest][1])) );
-    float vel = 3.6 * laskeEtaisyys( rad(lat), rad(lon), rad(oldLat), rad(oldLon) ) / interval;
+    float dist = getDist( rad(lat), rad(lon), rad(PF(&destPos[dest][0])), rad(PF(&destPos[dest][1])) );
+    float vel = 3.6 * getDist( rad(lat), rad(lon), rad(oldLat), rad(oldLon) ) / interval;
 
     sensors.requestTemperatures();
     float temp = sensors.getTempCByIndex(0);
