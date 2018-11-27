@@ -7,7 +7,7 @@
 #include <Math.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
-#include "GsmFunctions.h"
+#include "GpsFunctions.h"
 
 
 template<class T> inline Print &operator <<(Print &obj, T arg)
