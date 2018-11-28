@@ -21,6 +21,18 @@ padding: 0;
 
 <script>
 
+var customLabel = 
+{ 
+Ravintola: 
+	{
+	label: 'R'
+	},
+Koulu: 
+	{
+	label: 'Ko'
+	}
+};
+
 function initMap() 
 {
 	var map = new google.maps.Map(document.getElementById('map'), 
@@ -38,7 +50,7 @@ function initMap()
 
 		Array.prototype.forEach.call(markers, function(markerElem) 
 		{
-			var id = markerElem.getAttribute('id');
+			var id = markerElem.getAttribute('idmarker');
 			var name = markerElem.getAttribute('name');
 			var address = markerElem.getAttribute('address');
 			var type = markerElem.getAttribute('type');
@@ -52,58 +64,41 @@ function initMap()
 			strong.textContent = name;
 			infowincontent.appendChild(strong);
 			infowincontent.appendChild(document.createElement('br'));
-
+			
 			var text = document.createElement('text');
+			var text1 = document.createElement('text1');
 			text.textContent = address;
 			infowincontent.appendChild(text);
+			infowincontent.appendChild(document.createElement('br'));
+			text1.textContent = type;
+			infowincontent.appendChild(text1);
 				
 			var icon = customLabel[type] || {};
+		
+			var myFillColor = temperature < -4  ?  'cyan'  :  temperature > 4  ?  'orange'  :  'white';
+			var myStrokeColor = id < 4  ?  'green'  :  id > 4  ?  'red'  :  'black';
 
-			
-			if (temperature > 0)
-			{
-				var marker = new google.maps.Marker(
-				{	
-					map: map,
-					position: point,
-					icon: 
-					{
-						path: google.maps.SymbolPath.CIRCLE,
-						strokeColor: 'red',
-						strokeWeight: 10,
-						scale: 1
-					}
-				});
-
-				marker.addListener('click', function() 
+			var marker = new google.maps.Marker(
+			{	
+				map: map,
+				position: point,
+				icon: 
 				{
-					infoWindow.setContent(infowincontent);
-					infoWindow.open(map, marker);
-				});
-			}
-						
-			if (temperature < 0)
-			{
-				var marker = new google.maps.Marker(
-				{	
-					map: map,
-					position: point,
-					icon: 
-					{
-						path: google.maps.SymbolPath.CIRCLE,
-						strokeColor: 'blue',
-						strokeWeight: 10,
-						scale: 1
-					}
-				});
+					path: google.maps.SymbolPath.CIRCLE,
+					fillColor: myFillColor,
+					fillOpacity: 1,
+					strokeColor: myStrokeColor,
+					strokeWeight: 3,
+					scale: 6	
+				}
+			});
 
-				marker.addListener('click', function() 
-				{
-					infoWindow.setContent(infowincontent);
-					infoWindow.open(map, marker);
-				});
-			}				
-			
+			marker.addListener('click', function() 
+			{
+				infoWindow.setContent(infowincontent);
+				infoWindow.open(map, marker);
+			});
+
 		});
 	});
 }
