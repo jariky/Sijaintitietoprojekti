@@ -95,3 +95,61 @@ void receiveData(int8_t *buff, int8_t num1, int8_t num2)   // buff = Received da
       Wire.endTransmission();
     }
 }
+
+
+void printUTC()      // Time information
+{
+  char i = 0, flag = 0;
+  char value[7] = { '$','G','P','G','G','A',',' };
+  char buff[7] = { '0','0','0','0','0','0','0' };
+  char time[9] = { '0','0','0','0','0','0','0','0','0' };   //Storage time data
+
+  double t = 0;
+
+  while (1)
+  {
+    rec_init();
+
+    while ( Wire.available() )
+    { 
+      if (!flag)
+      { 
+        buff[i] = Wire.read();
+  
+        if ( buff[i] == value[i] )
+        {
+          i++;
+
+          if(i == 7)
+          {
+            i=0;
+            flag=1;
+          }
+        }
+
+        else
+          i=0;
+      }
+
+      else
+      {
+        time[i] = Wire.read();
+        i++;
+
+        if(i == 9)
+        {
+          t = dataTransfer(time, 2);          // Converts floating-point data
+          t += 80000.0;                       // To convert time to Beijing time
+          Serial.print("\nUTC: ");              // The time data output
+          Serial.print(t);
+          Wire.endTransmission();
+          return;
+        }
+      }
+    }
+
+    Wire.endTransmission(); 
+  }
+}
+
+
