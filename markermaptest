@@ -21,17 +21,6 @@ padding: 0;
 
 <script>
 
-var customLabel = 
-{ 
-Ravintola: 
-	{
-	label: 'R'
-	},
-Koulu: 
-	{
-	label: 'Ko'
-	}
-};
 
 function initMap() 
 {
@@ -73,7 +62,7 @@ function initMap()
 			text1.textContent = type;
 			infowincontent.appendChild(text1);
 				
-			var icon = customLabel[type] || {};
+			var icon;
 		
 			var myFillColor = temperature < -4  ?  'cyan'  :  temperature > 4  ?  'orange'  :  'white';
 			var myStrokeColor = id < 4  ?  'green'  :  id > 4  ?  'red'  :  'black';
