@@ -20,8 +20,7 @@
 #define TFTrst 8
 #define TFTdc 9
 #define TFTcs 10
-#define interval 5000
-#define recSize 85
+#define recSize 3
 
 TFT Screen = TFT(TFTcs, TFTdc, TFTrst);
 OneWire OW(4);                              // Setup a oneWire instance to communicate with any OneWire devices, connecting data wire into pin 4
@@ -29,7 +28,7 @@ DallasTemperature Sensors(&OW);             // Pass our oneWire reference to Dal
 SoftwareSerial modem(rxPin, txPin);         // We'll use a software serial interface to connect to modem
 
 uint8_t dest, counter, recTemp[recSize];
-uint16_t recLon[recSize], recLat[recSize];
+uint16_t interval = 5000, recLon[recSize], recLat[recSize];
 float lon, lat;
 String response;
 
@@ -62,13 +61,20 @@ bool listenModem(uint32_t timeOut = 50, bool echo = 0)
 
       if (response.indexOf("ERROR") > -1)
         Serial  <<  "\nError found!";
-    } 
+
+      if (response.indexOf("Dest = ") > -1)
+      {
+        dest = constrain(response[7] - 48, 0, 3);
+        response.remove(0, 16);
+        interval = constrain(1000 * response.toInt(), 3000, 16000);
+      }
+    }
 }
 
 
 void out(String cmd, String check = "OK", uint16_t timeout = 10000)
 {
-  delay(500);
+  delay(50);
   modem  <<  cmd  << "\n";
   response = "";
   uint32_t startTime = millis();
@@ -99,8 +105,8 @@ void setup()
 {
   Wire.begin();
   Serial.begin(38400);
-  modem.begin(38400);        // Change this to the baudrate used by modem
-  delay(1000);              // Let the module self-initialize
+  modem.begin(38400);         // Change this to the baudrate used by modem
+  delay(1000);                // Let the module self-initialize
 
   out(F("AT+QICSGP=1,\"internet\""));
 
@@ -143,41 +149,54 @@ void updateScreen(float dist, float vel, float temp)
 }
 
 
-void createPayload()
+void sendPayload()
 {
-  uint8_t index = 0;
+  uint8_t row = 0;
   uint16_t value = 0;
 
   modem  <<  F("POST /~t7kyja01/Add.php HTTP/1.1\r\nHost: 193.167.100.74\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: 1500\r\n\r\nM=");
 
-  while (index < recSize + 1)
+  while (1)
   {
-    if (index)
+    if (row)
       modem  <<  ":";
 
-    for (uint8_t i=0 ; i<3 ; i++)
+    for (uint8_t col=0 ; col<3 ; col++)
     {
-      switch(i)
+      if (col)
+        modem  <<  ',';
+
+      switch(col)
       {
-        case 0:   value = recLon[index];      break;
-        case 1:   value = recLat[index];      break;
-        case 2:   value = recTemp[index];     break;  
+        case 0:   value = recLon[row];      break;
+        case 1:   value = recLat[row];      break;
+        case 2:   value = recTemp[row];     break;  
       }
 
       modem  <<  value;
-
-      if (i < 2)
-        modem  <<  ',';
     }
 
     if (!counter)
       return;      
 
     counter--;
-    index++;
+    row++;
   }
+}
 
-  Serial  <<  "\nIndex: "  <<  index;
+
+void updateControls()
+{
+  String outData = "http://www.students.oamk.fi/~t7kyja01/ControlView.php";
+
+  Serial  <<  "\nUpdating controls...";
+
+  out("AT+QHTTPURL=" + String(outData.length()) + ",30", "CONNECT");
+  out(outData);
+  out("AT+QHTTPGET=30");
+  out("AT+QHTTPREAD=30");
+
+  Serial  <<  "\nCurrent destination is "  <<  dest  <<" ("  <<  destText[dest]  <<  "), current interval is "  <<  interval  <<  ".\n";
 }
 
 
@@ -188,11 +207,12 @@ void upload()
   uint32_t sendStartTime = millis();
   out(F("AT+QIOPEN=\"TCP\",\"193.167.100.74\",80"), F("CONNECT"));   // Start a TCP connection, port 80
   out(F("AT+QISEND"), F(">"));
-  createPayload();
+  sendPayload();
   modem  <<  "\x1A";
   out(F("AT+QICLOSE"));
 
-  Serial  <<  "\nTransfer completed in "  <<  millis() - sendStartTime  <<  " ms.\n";
+  Serial  <<  "\nTransfer completed in "  <<  millis() - sendStartTime  <<  " ms.";
+  updateControls();
 }
 
 
@@ -224,7 +244,6 @@ void loop()
 
   if ( Serial.available() )
     input = Serial.parseInt();
-
 
   if (input  ||  counter == recSize - 1)
     upload();
