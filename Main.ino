@@ -17,9 +17,9 @@
 #define tempPin 4
 #define ledPin 5
 #define switchPin 6
-#define recSize 25
+#define recSize 2
 
-uint8_t dest, counter, recTemp[recSize];
+uint8_t dest = 99, counter, recTemp[recSize];
 uint16_t interval = 5000, recLon[recSize], recLat[recSize];
 float lon, lat;
 String response;
@@ -98,7 +98,7 @@ void setup()
   Sensors.begin();
 
   Screen.begin();
-  drawStaticText();
+  drawReady();
 }
 
 
@@ -108,6 +108,8 @@ void sendPayload()
   uint16_t value = 0;
 
   modem  <<  F("POST /~t7kyja01/Add.php HTTP/1.1\r\nHost: 193.167.100.74\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: 1500\r\n\r\nM=");
+
+  counter--;
 
   while (1)
   {
@@ -155,9 +157,9 @@ void updateControls()
 
 void upload()
 {
-  counter--;
-  drawTransfer();
   digitalWrite(ledPin, 1);
+  drawTransfer();
+
   Serial  <<  "\n\nBeginning transfers ("  <<  counter + 1  <<  " entries total)...";
 
   uint32_t sendStartTime = millis();
@@ -168,9 +170,10 @@ void upload()
   out(F("AT+QICLOSE"));
 
   Serial  <<  "\nTransfer completed in "  <<  millis() - sendStartTime  <<  " ms.";
-  updateControls();
+  dest = 99;
+
+  drawReady();
   digitalWrite(ledPin, 0);
-  drawStaticText();
 }
 
 
@@ -179,11 +182,19 @@ void loop()
   uint32_t timestamp = millis();
 
   if ( digitalRead(switchPin) )
-  {  
+  {
+    if (dest == 99)
+    {
+      updateControls();
+      drawStaticText();
+    }
+
     float oldLon = lon;
     float oldLat = lat;
     lon = getLon();     // 25.45
     lat = getLat();     // 65.00
+//    lon = 25.45;
+//    lat = 65.00;
   
     float dist = getDist( rad(lon), rad(lat), rad(PF(&destLon[dest])), rad(PF(&destLat[dest])) );
     float vel = 3.6 * getDist( rad(lon), rad(lat), rad(oldLon), rad(oldLat) ) / interval;
