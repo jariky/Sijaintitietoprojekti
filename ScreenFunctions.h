@@ -20,6 +20,14 @@ void drawTransfer()
 }
 
 
+void drawReady()
+{
+  Screen.fillScreen(0);
+  Screen.stroke(0, 255, 0);
+  Screen.text("READY", 70, 60);
+}
+
+
 void drawStaticText()
 {
   Screen.fillScreen(0);
@@ -58,5 +66,4 @@ void updateScreen(float dist, float vel, float temp)
   draw(temp, 5, 0, 87);
   draw(counter, 4, 0, 112);
 }
-
 
