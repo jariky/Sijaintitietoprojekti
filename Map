@@ -1,124 +1,199 @@
 <!DOCTYPE html >
 <head>
-<meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
-<meta http-equiv="content-type" content="text/html; charset=UTF-8"/>
-<title>Google maps</title>
-<style>
-#map {
-height: 100%;
-}
+	<meta name="viewport" content="initial-scale = 1.0, user-scalable = no" http-equiv = "content-type" content="text/html; charset = UTF-8">
+	</meta>
+	<title>Google maps</title>
+	<style>
+		#map
+		{
+			height: 100%;
+		}
 
-html, body {
-height: 100%;
-margin: 0;
-padding: 0;
-}
-</style>
+		html, body
+		{
+			height: 100%;
+			margin: 0;
+			padding: 0;
+		}
+
+		#wrapper
+		{
+			position: relative;
+			height: 100%
+		}
+		
+		#over_map
+		{
+			position: absolute;
+			bottom: 18px;
+			right: 8px;
+			z-index: 9;
+		}
+	</style>
 </head>
 
+
 <body>
-<div id="map"></div>
+
+
+<div id="wrapper">
+	<div id="map"></div>
+
+	<div id="over_map">
+		<img src="Legend.jpg" border="1">
+	</div>
+</div>
+
 
 <script>
 
 
-function initMap() 
-{
-	var map = new google.maps.Map(document.getElementById('map'), 
+	function initMap() 
 	{
-		center: new google.maps.LatLng(65.008359, 25.469772),
-		zoom: 12
-	});
-
-	var infoWindow = new google.maps.InfoWindow;
-
-	downloadUrl('http://jukkajauhiainen.ipt.oamk.fi/~c7vaje00/xmltester.php', function(data) 
-	{
-		var xml = data.responseXML;
-		var markers = xml.documentElement.getElementsByTagName('marker');
-
-		Array.prototype.forEach.call(markers, function(markerElem) 
+		var map = new google.maps.Map(document.getElementById('map'), 
 		{
-			var id = markerElem.getAttribute('idmarker');
-			var name = markerElem.getAttribute('name');
-			var address = markerElem.getAttribute('address');
-			var type = markerElem.getAttribute('type');
-			var temperature = markerElem.getAttribute('temperature');
-			var point = new google.maps.LatLng(
-			parseFloat(markerElem.getAttribute('lat')),
-			parseFloat(markerElem.getAttribute('lng')));
-			
-			var infowincontent = document.createElement('div');
-			var strong = document.createElement('strong');
-			strong.textContent = name;
-			infowincontent.appendChild(strong);
-			infowincontent.appendChild(document.createElement('br'));
-			
-			var text = document.createElement('text');
-			var text1 = document.createElement('text1');
-			text.textContent = address;
-			infowincontent.appendChild(text);
-			infowincontent.appendChild(document.createElement('br'));
-			text1.textContent = type;
-			infowincontent.appendChild(text1);
-				
-			var icon;
-		
-			var myFillColor = temperature < -4  ?  'cyan'  :  temperature > 4  ?  'orange'  :  'white';
-			var myStrokeColor = id < 4  ?  'green'  :  id > 4  ?  'red'  :  'black';
-
-			var marker = new google.maps.Marker(
-			{	
-				map: map,
-				position: point,
-				icon: 
-				{
-					path: google.maps.SymbolPath.CIRCLE,
-					fillColor: myFillColor,
-					fillOpacity: 1,
-					strokeColor: myStrokeColor,
-					strokeWeight: 3,
-					scale: 6	
-				}
-			});
-
-			marker.addListener('click', function() 
-			{
-				infoWindow.setContent(infowincontent);
-				infoWindow.open(map, marker);
-			});
-
+			center: {lat: 65.008359, lng: 25.469772},
+			zoomControl: false,
+			zoom: 12
 		});
-	});
-}
 
 
+		var infoWindow = new google.maps.InfoWindow;
 
-function downloadUrl(url, callback) 
-{
-	var request = window.ActiveXObject ?
-	new ActiveXObject('Microsoft.XMLHTTP') :
-	new XMLHttpRequest;
+		downloadUrl('http://www.students.oamk.fi/~t7kyja01/MapXML.php', function(data)
+		{
+			var xml = data.responseXML;
+			var markers = xml.documentElement.getElementsByTagName('marker');
 
-request.onreadystatechange = function() 
-{
-	if (request.readyState == 4) 
-	{
-	request.onreadystatechange = doNothing;
-	callback(request, request.status);
+			Array.prototype.forEach.call(markers, function(markerElem) 
+			{
+				var lon = markerElem.getAttribute('lon');
+				var lat = markerElem.getAttribute('lat');
+				var TS = markerElem.getAttribute('TS');
+				var dest = markerElem.getAttribute('dest');
+				var dist = markerElem.getAttribute('dist');
+				var vel = markerElem.getAttribute('vel');
+				var temp = markerElem.getAttribute('temp');
+
+				var point = new google.maps.LatLng( parseFloat(markerElem.getAttribute('lat')) , parseFloat(markerElem.getAttribute('lon')));
+				var infowincontent = document.createElement('div');
+
+				var textLon = document.createElement('textLon');
+				var textComma = document.createElement('textComma');
+				var textLat = document.createElement('textLat');
+				var textTime = document.createElement('textTime');
+				var textDest = document.createElement('textDest');
+				var textDist = document.createElement('textDist');
+				var textDistValue = document.createElement('textDistValue');
+				var textM = document.createElement('textM');
+				var textStreet = document.createElement('textStreet');
+				var textVel = document.createElement('textVel');
+				var textKMH = document.createElement('textKMH');
+				var textTemp = document.createElement('textTemp');
+				var textCel = document.createElement('textCel');
+				textLon.textContent = lon;
+				textLon.style.fontWeight = 'bold';
+				textComma.textContent = ' , ';
+				textComma.style.fontWeight = 'bold';
+				textLat.textContent = lat;
+				textLat.style.fontWeight = 'bold';
+				textTime.textContent = TS;
+				textDest.textContent = 'Destination: ';
+				textStreet.textContent = dest;
+				textDist.textContent = 'Distance to: ';
+				textDistValue.textContent = dist;
+				textM.textContent = ' m';
+				textVel.textContent = vel;
+				textKMH.textContent = ' km/h';
+				textTemp.textContent = temp;
+				textCel.textContent = ' Â°C';
+
+				infowincontent.appendChild(textLat);
+				infowincontent.appendChild(textComma);
+				infowincontent.appendChild(textLon);
+				infowincontent.appendChild(document.createElement('br'));
+				infowincontent.appendChild(document.createElement('br'));
+				infowincontent.appendChild(textTime);
+				infowincontent.appendChild(document.createElement('br'));
+				infowincontent.appendChild(document.createElement('br'));
+				infowincontent.appendChild(textDest);
+				infowincontent.appendChild(textStreet);
+				infowincontent.appendChild(document.createElement('br'));
+				infowincontent.appendChild(textDist);
+				infowincontent.appendChild(textDistValue);
+				infowincontent.appendChild(textM);
+				infowincontent.appendChild(document.createElement('br'));
+				infowincontent.appendChild(document.createElement('br'));
+				infowincontent.appendChild(textVel);
+				infowincontent.appendChild(textKMH);
+				infowincontent.appendChild(document.createElement('br'));
+				infowincontent.appendChild(textTemp);
+				infowincontent.appendChild(textCel);
+				
+				
+				var myFillColor = temp < -4  ?  'cyan'  :  temp > 4  ?  'orange'  :  'white';
+				var myStrokeColor = vel < 5  ?  'black'  :  vel > 80  ?  'red'  :  'green';
+
+				var marker = new google.maps.Marker(
+				{	
+					map: map,
+					position: point,
+					icon: 
+					{
+						path: google.maps.SymbolPath.CIRCLE,
+						fillColor: myFillColor,
+						fillOpacity: 1,
+						strokeColor: myStrokeColor,
+						strokeWeight: 3,
+						scale: 6	
+					}
+				});
+
+				marker.addListener('click', function() 
+				{
+					infoWindow.setContent(infowincontent);
+					infoWindow.open(map, marker);
+				});
+
+				
+			});
+		});
 	}
-};
 
-request.open('GET', url, true);
-request.send(null);
-}
 
-function doNothing() {}
+	function downloadUrl(url, callback) 
+	{
+		var request = window.ActiveXObject ?
+		new ActiveXObject('Microsoft.XMLHTTP') :
+		new XMLHttpRequest;
+
+
+		request.onreadystatechange = function() 
+		{
+			if (request.readyState == 4) 
+			{
+				request.onreadystatechange = doNothing;
+				callback(request, request.status);
+			}
+		};
+
+		request.open('GET', url, true);
+		request.send(null);
+	}
+
+
+	function doNothing()
+	{}
+
+	
 </script>
+
+
+
 <script async defer
-
-src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBwOHolTl0LA2uuS8XQcN4JTGbJKYazvp8&callback=initMap">
-
+	src="https://maps.googleapis.com/maps/api/js?callback=initMap">
 </script>
+
+
 </body>
 </html>
