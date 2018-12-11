@@ -12,19 +12,32 @@ TFT Screen = TFT(TFTcs, TFTdc, TFTrst);
 
 
 
-void drawTransfer()
+void writeStatus(String str, uint8_t R = 255, uint8_t G = 255, uint8_t B = 255)
 {
   Screen.fillScreen(0);
-  Screen.stroke(255, 255, 0);
-  Screen.text("UPLOADING...", 48, 60);
+  Screen.stroke(R, G, B);
+  uint8_t x = 80 - 3 * str.length();
+  uint8_t displayStr[str.length() + 1];
+  str.toCharArray(displayStr, str.length() + 1);
+  Screen.text(displayStr, x, 60);
 }
 
 
-void drawReady()
+void draw(float value, uint8_t precision, uint8_t X, uint8_t Y)
 {
-  Screen.fillScreen(0);
-  Screen.stroke(0, 255, 0);
-  Screen.text("READY", 70, 60);
+  uint8_t displayStr[10];
+  Screen.fillRect(X, Y, 5 * (precision + 1), 7, 0);
+  String(value, precision).toCharArray(displayStr, precision);
+  Screen.text(displayStr, X, Y);
+}
+
+
+void draw(String str, uint8_t X, uint8_t Y, uint8_t extraBlanking = 0)
+{
+  uint8_t displayStr[str.length() + 1];
+  Screen.fillRect(X, Y, 5 * (str.length() + 1) + extraBlanking, 7, 0);
+  str.toCharArray(displayStr, str.length() + 1);
+  Screen.text(displayStr, X, Y);
 }
 
 
@@ -46,21 +59,11 @@ void drawStaticText()
 }
 
 
-void draw(float value, uint8_t precision, uint8_t X, uint8_t Y)
-{
-  uint8_t displayStr[10];
-  Screen.fillRect(X, Y, 5*(precision+1), 7, 0);
-  String(value, precision).toCharArray(displayStr, precision);
-  Screen.text(displayStr, X, Y);
-}
-
-
 void updateScreen(float dist, float vel, float temp)
 {
   draw(lat, 10, 0, 12);
   draw(lon, 10, 65, 12);
-  Screen.fillRect(74, 25, 65, 7, 0);
-  Screen.text(destText[dest], 74, 25);
+  draw(destText[dest], 74, 25);
   draw(dist, 6, 0, 37);
   draw(vel, 4, 0, 62);
   draw(temp, 5, 0, 87);
