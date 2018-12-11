@@ -17,14 +17,14 @@
 #define tempPin 4
 #define ledPin 5
 #define switchPin 6
-#define recSize 2
+#define recSize 85
 
 uint8_t dest = 99, counter, recTemp[recSize];
 uint16_t interval = 5000, recLon[recSize], recLat[recSize];
 float lon, lat;
 String response;
 
-const char destText[4][15] = { "Kotkantie" , "Viehetie" , "Tirolintie" , "Santerinkuja" };
+const String destText[4] = { "Kotkantie" , "Viehetie" , "Tirolintie" , "Santerinkuja" };
 const PROGMEM float destLat[4] = { 64.999488 , 65.046135 , 65.034385 , 64.893637 };
 const PROGMEM float destLon[4] = { 25.512225 , 25.483199 , 25.462756 , 25.564052 };
 
@@ -37,7 +37,7 @@ DallasTemperature Sensors(&OW);             // Pass our oneWire reference to Dal
 SoftwareSerial modem(rxPin, txPin);         // We'll use a software serial interface to connect to modem
 
 
-template<class T> inline Print &operator <<(Print &obj, T arg)
+template <class T> inline Print &operator <<(Print &obj, T arg)
 {
   obj.print(arg);
   return obj;
@@ -47,7 +47,7 @@ template<class T> inline Print &operator <<(Print &obj, T arg)
 
 
 
-bool listenModem(uint32_t timeOut = 50, bool echo = 0)
+bool listenModem(uint32_t timeOut = 50)
 {
   uint32_t startTime = millis();
 
@@ -55,12 +55,6 @@ bool listenModem(uint32_t timeOut = 50, bool echo = 0)
     while ( modem.available() )
     {
       response = modem.readStringUntil('\n');
-
-      if (echo)
-        Serial  <<  "Modem: "  <<  response  <<  "\n";
-
-      if (response.indexOf("ERROR") > -1)
-        Serial  <<  "\nError found!";
 
       if (response.indexOf("Dest = ") > -1)
       {
@@ -79,7 +73,6 @@ void out(String cmd, String check = "OK", uint16_t timeout = 10000)
   response = "";
   uint32_t startTime = millis();
 
-
   while (response.indexOf(check) < 0  &&  millis() - startTime < timeout)
     listenModem();
 }
@@ -87,18 +80,34 @@ void out(String cmd, String check = "OK", uint16_t timeout = 10000)
 
 void setup()
 {
+  pinMode(13, OUTPUT);
+  digitalWrite(13, 0);                      // disable "L" - led (pin 13), saves 3 mA
+
+  Screen.begin();
+  writeStatus("Setup...");
+
   Wire.begin();
+  Sensors.begin();
   Serial.begin(38400);
   modem.begin(38400);         // Change this to the baudrate used by modem
   delay(1000);                // Let the module self-initialize
 
   out(F("AT+QICSGP=1,\"internet\""));
   pinMode(ledPin, OUTPUT);
+}
 
-  Sensors.begin();
 
-  Screen.begin();
-  drawReady();
+void updateControls()
+{
+  writeStatus("Updating settings...");
+  const String outData = "http://www.students.oamk.fi/~t7kyja01/ControlView.php";
+
+  out("AT+QHTTPURL=" + String(outData.length()) + ",30", "CONNECT");
+  out(outData);
+  out("AT+QHTTPGET=30");
+  out("AT+QHTTPREAD=30");
+
+  drawStaticText();
 }
 
 
@@ -132,7 +141,12 @@ void sendPayload()
     }
 
     if (!counter)
-      return;      
+    {
+      if (row < recSize - 1)
+        dest = 99;
+
+      return;
+    }
 
     counter--;
     row++;
@@ -140,40 +154,19 @@ void sendPayload()
 }
 
 
-void updateControls()
-{
-  String outData = "http://www.students.oamk.fi/~t7kyja01/ControlView.php";
-
-  Serial  <<  "\nUpdating controls...";
-
-  out("AT+QHTTPURL=" + String(outData.length()) + ",30", "CONNECT");
-  out(outData);
-  out("AT+QHTTPGET=30");
-  out("AT+QHTTPREAD=30");
-
-  Serial  <<  "\nCurrent destination is "  <<  dest  <<" ("  <<  destText[dest]  <<  "), current interval is "  <<  interval  <<  ".\n";
-}
-
-
 void upload()
 {
+  writeStatus("UPLOADING", 255, 255, 0);
+
   digitalWrite(ledPin, 1);
-  drawTransfer();
-
-  Serial  <<  "\n\nBeginning transfers ("  <<  counter + 1  <<  " entries total)...";
-
-  uint32_t sendStartTime = millis();
   out(F("AT+QIOPEN=\"TCP\",\"193.167.100.74\",80"), F("CONNECT"));   // Start a TCP connection, port 80
   out(F("AT+QISEND"), F(">"));
   sendPayload();
   modem  <<  "\x1A";
-  out(F("AT+QICLOSE"));
-
-  Serial  <<  "\nTransfer completed in "  <<  millis() - sendStartTime  <<  " ms.";
-  dest = 99;
-
-  drawReady();
+  modem  <<  F("AT+QICLOSE");
   digitalWrite(ledPin, 0);
+
+  writeStatus("Uploading complete.");
 }
 
 
@@ -184,25 +177,21 @@ void loop()
   if ( digitalRead(switchPin) )
   {
     if (dest == 99)
-    {
       updateControls();
-      drawStaticText();
-    }
 
+    draw("???", 0, 12, 35);
+    draw("???", 65, 12, 35);
     float oldLon = lon;
     float oldLat = lat;
     lon = getLon();     // 25.45
     lat = getLat();     // 65.00
-//    lon = 25.45;
-//    lat = 65.00;
   
     float dist = getDist( rad(lon), rad(lat), rad(PF(&destLon[dest])), rad(PF(&destLat[dest])) );
     float vel = 3.6 * getDist( rad(lon), rad(lat), rad(oldLon), rad(oldLat) ) / interval;
   
     Sensors.requestTemperatures();
     float temp = Sensors.getTempCByIndex(0);
-  
-    Serial  <<  "\n#"  <<  counter  <<  "\tCurrent position: "  <<  String(lat, 5)  <<  " , "  <<  String(lon, 5)  <<  "     Distance to "  <<  destText[dest]  <<  ": "  <<  dist  <<  " km     Temperature: "  <<  temp  <<  " C";
+
     updateScreen(dist, vel, temp);
   
     recLon [counter] = constrain( 354130.304389406 * (lon - 25.385982), 0, 65535 );
@@ -217,10 +206,9 @@ void loop()
     upload();
 
   else
-    Serial  <<  "\nWaiting...";
+    writeStatus("READY", 0, 255, 0);
 
-  listenModem(500, 1);
 
-  while ( millis() - timestamp < interval );
+  while ( timestamp + interval > millis() );
 }
 
