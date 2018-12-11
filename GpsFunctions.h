@@ -1,6 +1,10 @@
 
 
-#define GPSAddress 0x42      // GPS I2C Address
+#define GPSAddress 0x42       // GPS I2C Address
+#define trueGPS(x)            (x - floor(x/100) * 40.0) / 60
+
+
+
 
 
 float dataTransfer(int8_t *data_buf, int8_t num)   // Data type converter：convert int8_t type to float. *data_buf = int8_t data array, num = float length
@@ -97,12 +101,28 @@ void receiveData(int8_t *buff, int8_t num1, int8_t num2)   // buff = Received da
 }
 
 
+float getLat()
+{
+  int8_t tempLat[12] = { '0','0','0','0','0','0','0','0','0','0','0','0' };     // Store the latitude data
+  receiveData(tempLat, 1, 12);
+  return trueGPS( dataTransfer(tempLat, 8) );
+}
+
+
+float getLon()
+{
+  int8_t tempLon[12] = { '0','0','0','0','0','0','0','0','0','0','0','0' };   // Store longitude data
+  receiveData(tempLon, 3, 12);
+  return trueGPS( dataTransfer(tempLon, 8) );
+}
+
+
 void printUTC()      // Time information
 {
   char i = 0, flag = 0;
   char value[7] = { '$','G','P','G','G','A',',' };
   char buff[7] = { '0','0','0','0','0','0','0' };
-  char time[9] = { '0','0','0','0','0','0','0','0','0' };   //Storage time data
+  char time[9] = { '0','0','0','0','0','0','0','0','0' };   // Store time data
 
   double t = 0;
 
@@ -122,21 +142,20 @@ void printUTC()      // Time information
 
           if(i == 7)
           {
-            i=0;
-            flag=1;
+            i = 0;
+            flag = 1;
           }
         }
 
         else
-          i=0;
+          i = 0;
       }
 
       else
       {
-        time[i] = Wire.read();
-        i++;
+        time[i++] = Wire.read();
 
-        if(i == 9)
+        if (i == 9)
         {
           t = dataTransfer(time, 2);          // Converts floating-point data
           t += 80000.0;                       // To convert time to Beijing time
@@ -151,5 +170,4 @@ void printUTC()      // Time information
     Wire.endTransmission(); 
   }
 }
-
 
